@@ -1,0 +1,199 @@
+/*
+Project 2 - Sound 
+Andrew Vaz
+VDES20146 3D Design 1: Spatial Thinking and Materials
+November 20, 2020
+*/
+
+// LED ------------------------------------------------------------------ START
+// Cite: http://www.arduino.cc/en/Tutorial/LiquidCrystalHelloWorld
+// include the library code:
+#include <LiquidCrystal.h>
+// initialize the library by associating any needed LCD interface pin
+// with the arduino pin number it is connected to
+int const rs = 12, en = 11, d4 = 5, d5 = 4, d6 = 3, d7 = 2;
+LiquidCrystal lcd(rs, en, d4, d5, d6, d7);
+// LED -------------------------------------------------------------------- END
+
+// ULTRA ---------------------------------------------------------------- START
+// Cite: https://create.arduino.cc/projecthub/ammaratef45/detecting-obstacles-and-warning-arduino-and-ultrasonic-13e5ea
+
+// Define pins for ultrasonic and buzzer
+int const trigPin = 10;
+int const echoPin = 9;
+int const speaker = 6;
+// ULTRA ------------------------------------------------------------------ END
+
+// Wii ------------------------------------------------------------------ START
+// Cite: https://github.com/robsoncouto/arduino-songs/blob/master/miichannel/miichannel.ino
+#include "pitches.h"
+
+// change this to make the song slower or faster
+int tempo = 114;
+
+// notes in the melody:
+// I split the whole song into 2 melodies
+int melody[] = {
+  NOTE_FS4, 8, REST, 8, NOTE_A4, 8, NOTE_CS5, 8, REST, 8, NOTE_A4, 8, REST, 8, NOTE_FS4, 8, //1
+  NOTE_D4, 8, NOTE_D4, 8, NOTE_D4, 8, REST, 8, REST, 4, REST, 8, NOTE_CS4, 8,
+  NOTE_D4, 8, NOTE_FS4, 8, NOTE_A4, 8, NOTE_CS5, 8, REST, 8, NOTE_A4, 8, REST, 8, NOTE_F4, 8,
+  NOTE_E5, -4, NOTE_DS5, 8, NOTE_D5, 8, REST, 8, REST, 4,
+};
+
+
+int melody1[] = {
+  NOTE_GS4, 8, REST, 8, NOTE_CS5, 8, NOTE_FS4, 8, REST, 8, NOTE_CS5, 8, REST, 8, NOTE_GS4, 8, //5
+  REST, 8, NOTE_CS5, 8, NOTE_G4, 8, NOTE_FS4, 8, REST, 8, NOTE_E4, 8, REST, 8,
+  NOTE_E4, 8, NOTE_E4, 8, NOTE_E4, 8, REST, 8, REST, 4, NOTE_E4, 8, NOTE_E4, 8,
+  NOTE_E4, 8, REST, 8, REST
+};
+
+// sizeof gives the number of bytes, each int value is composed of two bytes (16 bits)
+// there are two values per note (pitch and duration), so for each note there are four bytes
+int notes = sizeof(melody) / sizeof(melody[0]) / 2;
+
+// this calculates the duration of a whole note in ms
+int wholenote = (60000 * 4) / tempo;
+
+int divider = 0, noteDuration = 0;
+// Wii -------------------------------------------------------------------- END
+
+int t = 0;
+int time_holder = 0;
+
+void setup() {
+  Serial.begin(9600);
+  // ULTRA -------------------------------------------------------------- START
+  pinMode(trigPin, OUTPUT); // trig pin will have pulses output
+  pinMode(echoPin, INPUT); // echo pin should be input to get pulse width
+  pinMode(speaker, OUTPUT); // buzz pin is output to control buzzering
+  // ULTRA ---------------------------------------------------------------- END
+
+  // MINE --------------------------------------------------------------- START
+  lcd.begin(16, 2);
+  lcd.print("Put something in");
+  lcd.setCursor(0, 1);
+  lcd.print("front of sensor");
+  delay(5000);
+  // MINE ----------------------------------------------------------------- END
+}
+
+void loop() {
+
+  // LED ---------------------------------------------------------------- START
+  lcd.begin(16, 2);
+  // Print a message to the LCD.
+  lcd.print("Distance");
+  // LED ------------------------------------------------------------------ END
+
+  // ULTRA -------------------------------------------------------------- START
+  // Duration will be the input pulse width and distance will be the
+  // distance to the obstacle in centimeters
+  int duration, distance;
+  // Output pulse with 1ms width on trigPin
+  digitalWrite(trigPin, HIGH);
+  delay(1);
+  digitalWrite(trigPin, LOW);
+  // Measure the pulse input in echo pin
+  duration = pulseIn(echoPin, HIGH);
+  // Distance is half the duration devided by 29.1 (from datasheet)
+  distance = (duration / 2) / 29.1;
+
+  // MINE --------------------------------------------------------------- START
+  // for some reason it doent let me print "distance: " + distance in one line 
+  // so I did it this way
+  Serial.print("\nDistance: ");
+  Serial.print(distance);
+  lcd.setCursor(0, 1);
+  lcd.print(distance);
+  delay(100);
+  // MINE ----------------------------------------------------------------- END
+
+  if (distance <= 30 && distance >= 10) {
+    t = 0;
+    // iterate over the notes of the melody.
+    // Remember, the array is twice the number of notes (notes + durations)
+    for (int thisNote = 0; thisNote < notes * 2; thisNote = thisNote + 2) {
+
+      // calculates the duration of each note
+      divider = melody[thisNote + 1];
+      if (divider > 0) {
+        // regular note, just proceed
+        noteDuration = (wholenote) / divider;
+      } else if (divider < 0) {
+        // dotted notes are represented with negative durations!!
+        noteDuration = (wholenote) / abs(divider);
+        noteDuration *= 1.5; // increases the duration in half for dotted notes
+      }
+
+      // we only play the note for 90% of the duration, leaving 10% as a pause
+      tone(speaker, melody[thisNote], noteDuration * 0.9);
+
+      // Wait for the specief duration before playing the next note.
+      delay(noteDuration);
+
+      // stop the waveform generation before the next note.
+      noTone(speaker);
+    }
+  }
+
+  // I added this statement so that when the distance is between
+  // these numbers another sound will be played
+  else if (distance <= 50 && distance >= 31) {
+    t = 0;
+    // Remember, the array is twice the number of notes (notes + durations)
+    for (int thisNote = 0; thisNote < notes * 2; thisNote = thisNote + 2) {
+
+      // calculates the duration of each note
+      divider = melody1[thisNote + 1];
+      if (divider > 0) {
+        // regular note, just proceed
+        noteDuration = (wholenote) / divider;
+      } else if (divider < 0) {
+        // dotted notes are represented with negative durations!!
+        noteDuration = (wholenote) / abs(divider);
+        noteDuration *= 1.5; // increases the duration in half for dotted notes
+      }
+
+      // we only play the note for 90% of the duration, leaving 10% as a pause
+      tone(speaker, melody1[thisNote], noteDuration * 0.9);
+
+      // Wait for the specief duration before playing the next note.
+      delay(noteDuration);
+
+      // stop the waveform generation before the next note.
+      noTone(speaker);
+    }
+  }
+  else {
+    noTone(speaker);
+
+    t++;
+    //    Serial.println(t);
+    time_holder = t % 10;
+    //    Serial.println("% " + time_holder);
+  }
+  // ULTRA ---------------------------------------------------------------- END
+
+  // MINE --------------------------------------------------------------- START
+  // I added this at the end of the code sequence so that the LCD
+  // clears so the new distance could be displayed
+  lcd.clear(); // clearing it every time the number changes
+
+
+  // Added this for a little fun
+  // if the users doent put something in front of the sensor
+  // the bottom text will be displayed on the lcd for 2 secs
+  if (time_holder <= 0) {
+    lcd.begin(16, 2);
+    lcd.print("plz put object:(");
+    lcd.setCursor(0, 1);
+    lcd.print("plzzzz i cri :'(");
+    t = 0;
+    delay(2000);
+  }
+  // MINE ----------------------------------------------------------------- END
+
+
+
+}
